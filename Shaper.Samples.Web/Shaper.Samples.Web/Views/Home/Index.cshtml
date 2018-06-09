@@ -1,0 +1,77 @@
+﻿<p class="lead" style="margin-top: 20px">Write below then click draw!</p>
+<p>
+    <span>Samples: (Draw an octagon with a side length of 200)</span>
+    <span>(Draw an isosceles triangle with a height of 300 and a width of 300)</span>
+</p>
+<form>
+    <div class="form-group">
+        <div class="row">
+            <div class="col-xs-10">
+                <input type="text" class="form-control" id="shapeText">
+            </div>
+            <div class="col-xs-2">
+                <input type="submit" class="form-control" id="submit" value="Draw">
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-xs-12" style="height: 100%">
+            <Canvas id="drawCanvas" height="500" width="500"></Canvas>
+        </div>
+    </div>
+</form>
+
+@section scripts
+{
+    <script>
+        $(document).ready(function() {
+
+            var extractLast = function(term) {
+                var idx = term.lastIndexOf(" ");
+
+                return idx === -1 ? term : term.substr(idx + 1, term.length - idx);
+            }
+
+            var canvas = Shaper("drawCanvas");
+            $("#shapeText")
+                // don't navigate away from the field on tab when selecting an item
+                .on("keydown",
+                    function(event) {
+                        if (event.keyCode === $.ui.keyCode.TAB &&
+                            $(this).autocomplete("instance").menu.active) {
+                            event.preventDefault();
+                        }
+                    })
+                .autocomplete({
+                    minLength: 0,
+                    source: function(request, response) {
+                        // delegate back to autocomplete, but extract the last term
+                        response($.ui.autocomplete.filter(
+                            canvas.keyWords,
+                            extractLast(request.term)));
+                    },
+                    focus: function() {
+                        // prevent value inserted on focus
+                        return false;
+                    },
+                    select: function(event, ui) {
+                        var idx = this.value.lastIndexOf(" ");
+                        this.value = (idx === -1 ? "" : this.value.substr(0, idx + 1)) + ui.item.value + " ";
+                        return false;
+                    }
+                });
+
+            $("#submit").click(function(event) {
+                $.getJSON("@Url.Action("Shape", "Parse")",
+                        { value: $("#shapeText").val() },
+                        function(data) {
+                            canvas.draw(data.Shape, data.Measures);
+                        })
+                    .error(function() { canvas.error("Unable to parse the provided text!"); });
+
+                event.preventDefault();
+            });
+
+        });
+    </script>
+}
